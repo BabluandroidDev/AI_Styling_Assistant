@@ -1,62 +1,37 @@
 package com.example.aistyling.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.aistyling.R
 import com.example.aistyling.data.models.ChatMessage
 import com.example.aistyling.ui.componets.SuggestionChip
 import com.example.aistyling.vm.ChatViewModel
@@ -64,18 +39,40 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ChatScreen(viewModel: ChatViewModel) {
+
+    var isVoiceMode by remember { mutableStateOf(false) }
+
+    AnimatedContent(
+        targetState = isVoiceMode,
+        transitionSpec = {
+            fadeIn() togetherWith fadeOut()
+        }
+    ) { showVoiceMode ->
+        if (showVoiceMode) {
+            VoiceModeScreen(onMinimize = { isVoiceMode = false })
+        } else {
+            ChatModeScreen(
+                viewModel = viewModel,
+                onMicClick = { isVoiceMode = true }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChatModeScreen(
+    viewModel: ChatViewModel,
+    onMicClick: () -> Unit
+) {
     val messages by viewModel.messages.collectAsState()
     val isTyping by viewModel.isBotTyping.collectAsState()
     val suggestions = viewModel.suggestions
-
     val listState = rememberLazyListState()
     val coroutine = rememberCoroutineScope()
     var input by remember { mutableStateOf("") }
 
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
-        }
+        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
     }
 
     Box(
@@ -92,7 +89,6 @@ fun ChatScreen(viewModel: ChatViewModel) {
 
             val hasUserMessages = messages.any { it.isUser }
 
-            // Show intro banner centered when no user messages (chat hasn't started)
             if (!hasUserMessages) {
                 Box(
                     modifier = Modifier
@@ -104,14 +100,13 @@ fun ChatScreen(viewModel: ChatViewModel) {
                 }
             }
 
-            // Show messages list only when user has started chatting
             if (hasUserMessages) {
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.Bottom
                 ) {
                     itemsIndexed(messages) { index, msg ->
                         AnimatedVisibility(visible = true, enter = fadeIn()) {
@@ -121,15 +116,10 @@ fun ChatScreen(viewModel: ChatViewModel) {
                             )
                         }
                     }
-                    item {
-                        if (isTyping) {
-                            TypingIndicator()
-                        }
-                    }
+                    item { if (isTyping) TypingIndicator() }
                 }
             }
 
-            // Show suggestion grid just above AssistProgressCard when no user messages
             if (!hasUserMessages) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -160,10 +150,148 @@ fun ChatScreen(viewModel: ChatViewModel) {
                             listState.animateScrollToItem(viewModel.messages.value.size)
                         }
                     }
-                }
+                },
+                onMicClick = onMicClick
             )
 
             DisclaimerText()
+        }
+    }
+}
+
+@Composable
+fun VoiceModeScreen(onMinimize: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { /* optional back action */ }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("AI Assistant", color = Color.White)
+                    Text("Chat for Styling Tips", color = Color.LightGray)
+                }
+                IconButton(onClick = onMinimize) {
+                    Icon(
+                        imageVector = Icons.Outlined.ExpandMore,
+                        contentDescription = "Minimize",
+                        tint = Color.White
+                    )
+                }
+            }
+
+            Spacer(Modifier.weight(1f))
+
+
+            Image(
+                painter = painterResource(id = R.drawable.assistant_placeholder),
+                contentDescription = "Assistant",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(4f),
+                contentScale = ContentScale.Fit
+            )
+
+
+            IconButton(
+                onClick = { /* Start listening */ },
+                modifier = Modifier
+                    .padding(bottom = 24.dp)
+                    .size(64.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Mic,
+                    contentDescription = "Mic",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Text(
+                "All Data are AI generated and may not be accurate",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun InputBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onMicClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.weight(1f),
+            placeholder = {
+                Text(
+                    "Chat With AI...",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            trailingIcon = {
+                IconButton(onClick = onMicClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Mic,
+                        contentDescription = "Mic",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                cursorColor = MaterialTheme.colorScheme.primary
+            )
+        )
+        Spacer(Modifier.width(10.dp))
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary,
+            onClick = onSend
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Send,
+                contentDescription = "Send",
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.padding(12.dp)
+            )
         }
     }
 }
@@ -281,7 +409,7 @@ private fun MessageBubble(
 ) {
     val isUser = message.isUser
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(8.dp),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Bottom
     ) {
@@ -452,7 +580,7 @@ private fun InputBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
-            leadingIcon = {
+            trailingIcon = {
                 Icon(
                     imageVector = Icons.Outlined.Mic,
                     contentDescription = "Mic",
