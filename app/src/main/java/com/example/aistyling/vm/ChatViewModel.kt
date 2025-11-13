@@ -1,6 +1,5 @@
 package com.example.aistyling.vm
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aistyling.data.ChatRepository
@@ -12,6 +11,11 @@ import kotlinx.coroutines.launch
 
 class ChatViewModel(private val repo: ChatRepository) : ViewModel() {
 
+    data class ChatSuggestion(
+        val label: String,
+        val key: String
+    )
+
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages
 
@@ -19,10 +23,10 @@ class ChatViewModel(private val repo: ChatRepository) : ViewModel() {
     val isBotTyping: StateFlow<Boolean> = _isBotTyping
 
     val suggestions = listOf(
-        "Monsoon Make-Up Tips",
-        "Need Booking Helps",
-        "Quick Ready Tips",
-        "Get Ready for Birthday"
+        ChatSuggestion("Monsoon Make-Up Tips", "monsoon_makeup_tips"),
+        ChatSuggestion("Need Booking Helps", "need_booking_helps"),
+        ChatSuggestion("Quick Ready Tips", "quick_ready_tips"),
+        ChatSuggestion("Get Ready for Birthday", "get_ready_for_birthday")
     )
 
     fun loadInitial() {
@@ -37,15 +41,18 @@ class ChatViewModel(private val repo: ChatRepository) : ViewModel() {
         val userMsg = repo.userMessage(text)
         _messages.value = _messages.value + userMsg
 
-        // simulate bot typing & reply
         viewModelScope.launch {
             _isBotTyping.value = true
-            delay(700) // small typing delay
+            delay(700)
             val reply = repo.getAiReplyFor(suggestionKey ?: text)
-            delay(400) // emulate thinking
+            delay(400)
             val aiMsg = repo.aiMessage(reply)
             _messages.value = _messages.value + aiMsg
             _isBotTyping.value = false
         }
+    }
+
+    fun sendSuggestion(suggestion: ChatSuggestion) {
+        sendUserMessage(suggestion.label, suggestion.key)
     }
 }

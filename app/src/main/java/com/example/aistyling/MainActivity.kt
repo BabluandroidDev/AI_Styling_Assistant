@@ -4,12 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.material3.Text
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.aistyling.data.ChatRepository
 import com.example.aistyling.ui.ChatScreen
-import com.example.aistyling.ui.theme.AIStylingTheme
+import com.example.aistyling.ui.theme.AIStylingAssistantTheme
 import com.example.aistyling.vm.ChatViewModel
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +26,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         vm.loadInitial()
         setContent {
-            AIStylingTheme {
+            AIStylingAssistantTheme {
                 ChatScreen(viewModel = vm)
             }
         }
